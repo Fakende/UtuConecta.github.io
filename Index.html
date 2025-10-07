@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTU conecta</title>
+    
+    <!-- Incluimos React y ReactDOM desde un CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Incluimos Babel para transpilar el JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Incluimos Tailwind CSS para el estilizado -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+    
+        /* Estilo para el calendario */
+        .calendar-day-cell {
+            position: relative;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .calendar-day-cell:hover {
+            background-color: #f3f4f6;
+        }
+        .calendar-day-number {
+            font-weight: bold;
+            font-size: 1.25rem;
+            color: #4b5563;
+        }
+        .calendar-event {
+            font-size: 0.75rem;
+            line-height: 1;
+            margin-top: 4px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 90%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Función segura para cargar datos desde localStorage
+        const loadData = (key, defaultValue = []) => {
+            try {
+                const serializedData = localStorage.getItem(key);
+                return serializedData ? JSON.parse(serializedData) : defaultValue;
+            } catch (error) {
+                console.error(`Error cargando datos de localStorage para ${key}:`, error);
+                return defaultValue;
+            }
+        };
+
+        // Función para guardar datos en localStorage
+        const saveData = (key, data) => {
+            try {
+                const serializedData = JSON.stringify(data);
+                localStorage.setItem(key, serializedData);
+            } catch (error) {
+                console.error(`Error guardando datos en localStorage para ${key}:`, error);
+            }
+        };
+
+        const Calendar = ({ events }) => {
+            const [currentDate, setCurrentDate] = React.useState(new Date());
+            const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+            const getFirstDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+
+            const prevMonth = () => {
+                setCurrentDate(prevDate => {
+                    const newDate = new Date(prevDate);
+                    newDate.setMonth(prevDate.getMonth() - 1);
+                    return newDate;
+                });
+            };
+
+            const nextMonth = () => {
+                setCurrentDate(prevDate => {
+                    const newDate = new Date(prevDate);
+                    newDate.setMonth(prevDate.getMonth() + 1);
+                    return newDate;
+                });
+            };
+
+            const renderDays = () => {
+                const daysInMonth = getDaysInMonth(currentDate);
+                const firstDay = getFirstDayOfMonth(currentDate);
+                const days = [];
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+
+                for (let i = 0; i < firstDay; i++) {
+                    days.push(<div key={`empty-${i}`} className="calendar-day-cell bg-gray-50 border-gray-200"></div>);
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dailyEvents = events.filter(event => event.date === dateString);
+                    const today = new Date();
+                    const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+
+                    days.push(
+                        <div key={day} className={`calendar-day-cell ${isToday ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200'}`}>
+                            <span className="calendar-day-number">{day}</span>
+                            {dailyEvents.map(event => (
+                                <div key={event.id} className="calendar-event bg-green-500 text-white">
+                                    {event.title}
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+                return days;
+            };
+
+            return (
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                        <button onClick={prevMonth} className="p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                        <h2 className="text-2xl font-bold text-gray-700">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2>
+                        <button onClick={nextMonth} className="p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10l-3.293-3.293a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 text-center text-sm font-semibold text-gray-500">
+                        {daysOfWeek.map(day => <span key={day}>{day}</span>)}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 mt-2">
+                        {renderDays()}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            // Se inicializa el estado con los datos cargados desde localStorage al inicio.
+            const [courses, setCourses] = React.useState(loadData('courses'));
+            const [teachers, setTeachers] = React.useState(loadData('teachers'));
+            const [subjects, setSubjects] = React.useState(loadData('subjects'));
+            const [notices, setNotices] = React.useState(loadData('notices'));
+            const [utuInfo, setUtuInfo] = React.useState(loadData('utuInfo', { authorities: '', attentionHours: '' }));
+            const [calendarEvents, setCalendarEvents] = React.useState(loadData('calendarEvents'));
+            const [absences, setAbsences] = React.useState(loadData('absences'));
+            
+            // Un estado para controlar la visibilidad del panel lateral
+            const [isAddingPanelOpen, setIsAddingPanel] = React.useState(false);
+            const [selectedCourseId, setSelectedCourseId] = React.useState(null);
+            const [currentPage, setCurrentPage] = React.useState('courses');
+
+            // Estados para los formularios
+            const [newCourseName, setNewCourseName] = React.useState('');
+            const [newTeacherName, setNewTeacherName] = React.useState('');
+            const [newTeacherEmail, setNewTeacherEmail] = React.useState('');
+            const [newSubjectName, setNewSubjectName] = React.useState('');
+            const [newSubjectSchedule, setNewSubjectSchedule] = React.useState('');
+            const [newNoticeTitle, setNewNoticeTitle] = React.useState('');
+            const [newNoticeContent, setNewNoticeContent] = React.useState('');
+            const [selectedTeacherId, setSelectedTeacherId] = React.useState('');
+            const [selectedCourseForSubjectId, setSelectedCourseForSubjectId] = React.useState('');
+            const [newCalendarDate, setNewCalendarDate] = React.useState('');
+            const [newCalendarTitle, setNewCalendarTitle] = React.useState('');
+            const [newCalendarDescription, setNewCalendarDescription] = React.useState('');
+            const [selectedAbsenceTeacherId, setSelectedAbsenceTeacherId] = React.useState('');
+            const [selectedAbsenceSubjectId, setSelectedAbsenceSubjectId] = React.useState('');
+            const [newAbsenceDate, setNewAbsenceDate] = React.useState('');
+            
+            // useEffects para guardar datos en localStorage cada vez que cambian
+            React.useEffect(() => { saveData('courses', courses); }, [courses]);
+            React.useEffect(() => { saveData('teachers', teachers); }, [teachers]);
+            React.useEffect(() => { saveData('subjects', subjects); }, [subjects]);
+            React.useEffect(() => { saveData('notices', notices); }, [notices]);
+            React.useEffect(() => { saveData('calendarEvents', calendarEvents); }, [calendarEvents]);
+            React.useEffect(() => { saveData('utuInfo', utuInfo); }, [utuInfo]);
+            React.useEffect(() => { saveData('absences', absences); }, [absences]);
+            
+            // --- Funciones para añadir datos ---
+            const addCourse = () => {
+                if (newCourseName.trim() === '') return;
+                const newCourse = { id: Date.now(), nombre: newCourseName };
+                setCourses([...courses, newCourse]);
+                setNewCourseName('');
+            };
+
+            const addTeacher = () => {
+                if (newTeacherName.trim() === '') return;
+                const newTeacher = { id: Date.now(), nombre: newTeacherName, email: newTeacherEmail };
+                setTeachers([...teachers, newTeacher]);
+                setNewTeacherName('');
+                setNewTeacherEmail('');
+            };
+
+            const addSubjectToCourse = () => {
+                if (newSubjectName.trim() === '' || selectedCourseForSubjectId === '' || selectedTeacherId === '' || newSubjectSchedule.trim() === '') {
+                    return;
+                }
+                const newSubject = {
+                    id: Date.now(),
+                    nombre: newSubjectName,
+                    cursoId: selectedCourseForSubjectId,
+                    profesorId: selectedTeacherId,
+                    horario: newSubjectSchedule
+                };
+                setSubjects([...subjects, newSubject]);
+                setNewSubjectName('');
+                setNewSubjectSchedule('');
+            };
+            
+            const addNotice = () => {
+                if (newNoticeTitle.trim() === '' || newNoticeContent.trim() === '') return;
+                const newNotice = {
+                    id: Date.now(),
+                    titulo: newNoticeTitle,
+                    contenido: newNoticeContent,
+                    fecha: new Date().toLocaleDateString()
+                };
+                setNotices([newNotice, ...notices]);
+                setNewNoticeTitle('');
+                setNewNoticeContent('');
+            };
+
+            const addCalendarEvent = () => {
+                if (newCalendarDate.trim() === '' || newCalendarTitle.trim() === '' || newCalendarDescription.trim() === '') return;
+                const newEvent = {
+                    id: Date.now(),
+                    date: newCalendarDate,
+                    title: newCalendarTitle,
+                    description: newCalendarDescription,
+                };
+                setCalendarEvents([...calendarEvents, newEvent]);
+                setNewCalendarDate('');
+                setNewCalendarTitle('');
+                setNewCalendarDescription('');
+            };
+
+            const addAbsence = () => {
+                if (selectedAbsenceTeacherId === '' || selectedAbsenceSubjectId === '' || newAbsenceDate.trim() === '') return;
+                const newAbsence = {
+                    id: Date.now(),
+                    teacherId: selectedAbsenceTeacherId,
+                    subjectId: selectedAbsenceSubjectId,
+                    date: newAbsenceDate
+                };
+                setAbsences([...absences, newAbsence]);
+                setSelectedAbsenceTeacherId('');
+                setSelectedAbsenceSubjectId('');
+                setNewAbsenceDate('');
+            };
+
+            // --- Funciones de visualización y filtrado ---
+            const filteredSubjects = subjects.filter(sub => sub.cursoId == selectedCourseId);
+
+            const getTeacherInfo = (teacherId) => {
+                const teacher = teachers.find(t => t.id == teacherId);
+                return teacher || { nombre: 'Profesor no encontrado', email: 'N/A' };
+            };
+            
+            const getSubjectInfo = (subjectId) => {
+                const subject = subjects.find(s => s.id == subjectId);
+                return subject || { nombre: 'Materia no encontrada' };
+            };
+
+            const getCourseInfo = (courseId) => {
+                const course = courses.find(c => c.id == courseId);
+                return course || { nombre: 'Curso no encontrado' };
+            };
+
+            const activeNavStyle = "bg-blue-600 text-white shadow-lg";
+            const inactiveNavStyle = "bg-gray-200 text-gray-700 hover:bg-gray-300";
+
+            return (
+                <div className="relative min-h-screen bg-gray-100 p-8 font-sans antialiased text-gray-800">
+                    <div className="max-w-4xl mx-auto space-y-8">
+                        <header className="relative text-center">
+                            <h1 className="text-4xl font-extrabold text-blue-700">UTU conecta</h1>
+                            <p className="mt-2 text-lg text-gray-600">
+                                Conecta a la comunidad educativa de la UTU.
+                            </p>
+                            <button
+                                className="absolute top-0 right-0 p-3 rounded-full bg-blue-500 text-white shadow-lg transition duration-300 transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300"
+                                onClick={() => setIsAddingPanel(true)}
+                                title="Añadir elementos"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.313.805 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.805 3.313-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.313-.805-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.805-3.313 2.37-2.37.587.363 1.25.568 1.956.568.706 0 1.369-.205 1.956-.568z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </button>
+                        </header>
+                        
+                        <Calendar events={calendarEvents} />
+                        
+                        <nav className="flex justify-center flex-wrap gap-2 md:gap-4 p-4 bg-white rounded-2xl shadow-lg border border-gray-200">
+                            <button
+                                className={`py-2 px-4 rounded-xl font-semibold transition duration-300 transform hover:scale-105 ${currentPage === 'courses' ? activeNavStyle : inactiveNavStyle}`}
+                                onClick={() => setCurrentPage('courses')}
+                            >
+                                Cursos
+                            </button>
+                            <button
+                                className={`py-2 px-4 rounded-xl font-semibold transition duration-300 transform hover:scale-105 ${currentPage === 'teachers' ? activeNavStyle : inactiveNavStyle}`}
+                                onClick={() => setCurrentPage('teachers')}
+                            >
+                                Profesores
+                            </button>
+                            <button
+                                className={`py-2 px-4 rounded-xl font-semibold transition duration-300 transform hover:scale-105 ${currentPage === 'subjects' ? activeNavStyle : inactiveNavStyle}`}
+                                onClick={() => setCurrentPage('subjects')}
+                            >
+                                Materias
+                            </button>
+                            <button
+                                className={`py-2 px-4 rounded-xl font-semibold transition duration-300 transform hover:scale-105 ${currentPage === 'absences' ? activeNavStyle : inactiveNavStyle}`}
+                                onClick={() => setCurrentPage('absences')}
+                            >
+                                Inasistencias
+                            </button>
+                            <button
+                                className={`py-2 px-4 rounded-xl font-semibold transition duration-300 transform hover:scale-105 ${currentPage === 'utu-info' ? activeNavStyle : inactiveNavStyle}`}
+                                onClick={() => setCurrentPage('utu-info')}
+                            >
+                                Info UTU
+                            </button>
+                            <button
+                                className={`py-2 px-4 rounded-xl font-semibold transition duration-300 transform hover:scale-105 ${currentPage === 'notices' ? activeNavStyle : inactiveNavStyle}`}
+                                onClick={() => setCurrentPage('notices')}
+                            >
+                                Avisos
+                            </button>
+                        </nav>
+                        
+                        {currentPage === 'courses' && (
+                            <section className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                                <h2 className="text-3xl font-bold text-gray-700 mb-6">Lista de Cursos</h2>
+                                {courses.length > 0 ? (
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {courses.map(course => (
+                                            <div
+                                                key={course.id}
+                                                className={`p-6 rounded-2xl border-2 cursor-pointer transition duration-200 transform hover:scale-105 ${selectedCourseId == course.id ? 'bg-blue-100 border-blue-500' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                                                onClick={() => setSelectedCourseId(course.id)}
+                                            >
+                                                <p className="font-semibold text-gray-700 text-xl">{course.nombre}</p>
+                                                <p className="text-sm text-gray-500 mt-2">Haz clic para ver las materias</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-center">No hay cursos disponibles. Usa el ícono de engranaje para añadir uno.</p>
+                                )}
+
+                                {selectedCourseId && (
+                                    <div className="mt-8 pt-8 border-t border-gray-200">
+                                        <h3 className="text-2xl font-bold text-gray-700 mb-4">
+                                            Materias de {getCourseInfo(selectedCourseId).nombre}
+                                        </h3>
+                                        {filteredSubjects.length > 0 ? (
+                                            <ul className="space-y-4">
+                                                {filteredSubjects.map(subject => {
+                                                    const teacher = getTeacherInfo(subject.profesorId);
+                                                    return (
+                                                        <li key={subject.id} className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                                            <p className="font-semibold text-gray-700 text-lg">{subject.nombre}</p>
+                                                            <p className="text-sm text-gray-500 mt-1">
+                                                                Horario: <span className="font-medium text-green-600">{subject.horario}</span>
+                                                            </p>
+                                                            <p className="text-sm text-gray-500 mt-1">
+                                                                Dictada por: <span className="font-medium text-blue-600">{teacher.nombre} ({teacher.email})</span>
+                                                            </p>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-gray-500 text-center">Este curso no tiene materias asignadas.</p>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+                        )}
+                        
+                        {currentPage === 'teachers' && (
+                            <section className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                                <h2 className="text-3xl font-bold text-gray-700 mb-6">Lista de Profesores</h2>
+                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {teachers.length > 0 ? (
+                                    teachers.map(teacher => (
+                                        <div key={teacher.id} className="bg-gray-50 p-6 rounded-2xl border border-gray-200 transition duration-200 transform hover:scale-105">
+                                            <p className="font-semibold text-gray-700 text-xl">{teacher.nombre}</p>
+                                            <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500 text-center col-span-full">No hay profesores registrados. Usa el ícono de engranaje para añadir uno.</p>
+                                )}
+                                </div>
+                            </section>
+                        )}
+
+                        {currentPage === 'subjects' && (
+                            <section className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                                <h2 className="text-3xl font-bold text-gray-700 mb-6">Lista de Materias Asignadas</h2>
+                                <ul className="space-y-4">
+                                    {subjects.length > 0 ? (
+                                        subjects.map(subject => {
+                                            const teacher = getTeacherInfo(subject.profesorId);
+                                            const course = getCourseInfo(subject.cursoId);
+                                            return (
+                                                <li key={subject.id} className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                                    <p className="font-semibold text-gray-700 text-lg">{subject.nombre}</p>
+                                                    <p className="text-sm text-gray-500 mt-1">
+                                                        Horario: <span className="font-medium text-green-600">{subject.horario}</span>
+                                                    </p>
+                                                    <p className="text-sm text-gray-500 mt-1">
+                                                        Dictada por: <span className="font-medium text-blue-600">{teacher.nombre}</span> en el curso: <span className="font-medium text-purple-600">{course.nombre}</span>
+                                                    </p>
+                                                </li>
+                                            );
+                                        })
+                                    ) : (
+                                        <p className="text-gray-500 text-center">No hay materias asignadas. Usa el ícono de engranaje para añadir una.</p>
+                                    )}
+                                </ul>
+                            </section>
+                        )}
+                        
+                        {currentPage === 'absences' && (
+                            <section className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                                <h2 className="text-3xl font-bold text-gray-700 mb-6">Inasistencias Docentes</h2>
+                                {absences.length > 0 ? (
+                                    <ul className="space-y-4">
+                                        {absences.map(absence => {
+                                            const teacher = getTeacherInfo(absence.teacherId);
+                                            const subject = getSubjectInfo(absence.subjectId);
+                                            return (
+                                                <li key={absence.id} className="bg-red-50 p-6 rounded-2xl border border-red-200 shadow-md">
+                                                    <p className="font-semibold text-red-700 text-lg">
+                                                        Profesor: <span className="font-medium">{teacher.nombre}</span>
+                                                    </p>
+                                                    <p className="text-sm text-gray-500 mt-1">
+                                                        Materia: <span className="font-medium">{subject.nombre}</span>
+                                                    </p>
+                                                    <p className="text-sm text-gray-500 mt-1">
+                                                        Fecha: <span className="font-medium text-gray-600">{new Date(absence.date + 'T00:00:00').toLocaleDateString()}</span>
+                                                    </p>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                ) : (
+                                    <p className="text-gray-500 text-center">No hay inasistencias registradas. Usa el ícono de engranaje para añadir una.</p>
+                                )}
+                            </section>
+                        )}
+
+                        {currentPage === 'utu-info' && (
+                            <section className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                                <h2 className="text-3xl font-bold text-gray-700 mb-6">Información de la UTU</h2>
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-600 mb-2">Autoridades</h3>
+                                        <p className="text-gray-800 p-4 bg-gray-50 rounded-xl border border-gray-200">{utuInfo.authorities || 'Aún no se ha añadido información.'}</p>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-600 mb-2">Horarios de atención</h3>
+                                        <p className="text-gray-800 p-4 bg-gray-50 rounded-xl border border-gray-200">{utuInfo.attentionHours || 'Aún no se ha añadido información.'}</p>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+                        
+                        {currentPage === 'notices' && (
+                            <section className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                                <h2 className="text-3xl font-bold text-gray-700 mb-6">Avisos</h2>
+                                <div>
+                                    {notices.length > 0 ? (
+                                        <ul className="space-y-4">
+                                            {notices.map(notice => (
+                                                <li key={notice.id} className="bg-yellow-50 p-6 rounded-2xl border border-yellow-200 shadow-md">
+                                                    <h3 className="text-xl font-bold text-yellow-800">{notice.titulo}</h3>
+                                                    <p className="text-sm text-yellow-700 mt-2">{notice.contenido}</p>
+                                                    <p className="text-xs text-yellow-600 mt-4 text-right">Publicado el: {notice.fecha}</p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-gray-500 text-center">No hay avisos publicados. Usa el ícono de engranaje para añadir uno.</p>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
+                        <footer className="text-center mt-8 text-gray-500 text-sm">
+                            <p>Aplicación impulsada por React. Los datos ahora se guardan en el almacenamiento local de tu navegador.</p>
+                        </footer>
+                    </div>
+
+                    {/* Panel lateral para añadir cosas */}
+                    <div className={`fixed top-0 right-0 w-80 md:w-96 h-full bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-50 ${isAddingPanelOpen ? 'translate-x-0' : 'translate-x-full'} p-6 overflow-y-auto`}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-gray-700">Añadir Contenido</h2>
+                            <button onClick={() => setIsAddingPanel(false)} className="text-gray-500 hover:text-gray-800 transition duration-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-8">
+                            {/* Formulario para Cursos */}
+                            <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Nuevo Curso</h3>
+                                <input
+                                    type="text"
+                                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    placeholder="Nombre del curso"
+                                    value={newCourseName}
+                                    onChange={(e) => setNewCourseName(e.target.value)}
+                                />
+                                <button
+                                    className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition duration-300 transform hover:scale-105 shadow-md"
+                                    onClick={addCourse}
+                                >
+                                    Añadir Curso
+                                </button>
+                            </section>
+                            
+                            {/* Formulario para Profesores */}
+                            <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Nuevo Profesor</h3>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                        placeholder="Nombre del profesor"
+                                        value={newTeacherName}
+                                        onChange={(e) => setNewTeacherName(e.target.value)}
+                                    />
+                                    <input
+                                        type="email"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                        placeholder="Email del profesor"
+                                        value={newTeacherEmail}
+                                        onChange={(e) => setNewTeacherEmail(e.target.value)}
+                                    />
+                                    <button
+                                        className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition duration-300 transform hover:scale-105 shadow-md"
+                                        onClick={addTeacher}
+                                    >
+                                        Añadir Profesor
+                                    </button>
+                                </div>
+                            </section>
+                            
+                            {/* Formulario para Materias */}
+                            <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Asignar Materia</h3>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
+                                        placeholder="Nombre de la materia"
+                                        value={newSubjectName}
+                                        onChange={(e) => setNewSubjectName(e.target.value)}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
+                                        placeholder="Horario (ej: Lunes 9:00 - 11:00)"
+                                        value={newSubjectSchedule}
+                                        onChange={(e) => setNewSubjectSchedule(e.target.value)}
+                                    />
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white"
+                                        value={selectedCourseForSubjectId}
+                                        onChange={(e) => setSelectedCourseForSubjectId(e.target.value)}
+                                    >
+                                        <option value="" disabled>Selecciona un curso</option>
+                                        {courses.map(course => (
+                                            <option key={course.id} value={course.id}>{course.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white"
+                                        value={selectedTeacherId}
+                                        onChange={(e) => setSelectedTeacherId(e.target.value)}
+                                    >
+                                        <option value="" disabled>Selecciona un profesor</option>
+                                        {teachers.map(teacher => (
+                                            <option key={teacher.id} value={teacher.id}>{teacher.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-xl transition duration-300 transform hover:scale-105 shadow-md"
+                                        onClick={addSubjectToCourse}
+                                    >
+                                        Asignar Materia
+                                    </button>
+                                </div>
+                            </section>
+                            
+                            {/* Formulario para Inasistencias */}
+                            <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Registrar Inasistencia</h3>
+                                <div className="space-y-2">
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-200 bg-white"
+                                        value={selectedAbsenceTeacherId}
+                                        onChange={(e) => setSelectedAbsenceTeacherId(e.target.value)}
+                                    >
+                                        <option value="" disabled>Selecciona al profesor</option>
+                                        {teachers.map(teacher => (
+                                            <option key={teacher.id} value={teacher.id}>{teacher.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-200 bg-white"
+                                        value={selectedAbsenceSubjectId}
+                                        onChange={(e) => setSelectedAbsenceSubjectId(e.target.value)}
+                                    >
+                                        <option value="" disabled>Selecciona la materia</option>
+                                        {subjects.map(subject => (
+                                            <option key={subject.id} value={subject.id}>{subject.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="date"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-200"
+                                        value={newAbsenceDate}
+                                        onChange={(e) => setNewAbsenceDate(e.target.value)}
+                                    />
+                                    <button
+                                        className="w-full mt-3 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-xl transition duration-300 transform hover:scale-105 shadow-md"
+                                        onClick={addAbsence}
+                                    >
+                                        Registrar Inasistencia
+                                    </button>
+                                </div>
+                            </section>
+                            
+                            {/* Formulario para Avisos */}
+                            <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Nuevo Aviso</h3>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition duration-200"
+                                        placeholder="Título del aviso"
+                                        value={newNoticeTitle}
+                                        onChange={(e) => setNewNoticeTitle(e.target.value)}
+                                    />
+                                    <textarea
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition duration-200"
+                                        placeholder="Contenido del aviso"
+                                        rows="3"
+                                        value={newNoticeContent}
+                                        onChange={(e) => setNewNoticeContent(e.target.value)}
+                                    />
+                                    <button
+                                        className="w-full mt-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-xl transition duration-300 transform hover:scale-105 shadow-md"
+                                        onClick={addNotice}
+                                    >
+                                        Publicar Aviso
+                                    </button>
+                                </div>
+                            </section>
+
+                             {/* Formulario para Eventos del Calendario */}
+                             <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Nuevo Evento de Calendario</h3>
+                                <div className="space-y-2">
+                                    <input
+                                        type="date"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200"
+                                        value={newCalendarDate}
+                                        onChange={(e) => setNewCalendarDate(e.target.value)}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200"
+                                        placeholder="Título del evento"
+                                        value={newCalendarTitle}
+                                        onChange={(e) => setNewCalendarTitle(e.target.value)}
+                                    />
+                                     <textarea
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition duration-200"
+                                        placeholder="Descripción del evento"
+                                        rows="2"
+                                        value={newCalendarDescription}
+                                        onChange={(e) => setNewCalendarDescription(e.target.value)}
+                                    />
+                                    <button
+                                        className="w-full mt-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 rounded-xl transition duration-300 transform hover:scale-105 shadow-md"
+                                        onClick={addCalendarEvent}
+                                    >
+                                        Añadir Evento
+                                    </button>
+                                </div>
+                            </section>
+
+                            {/* Formulario para Info UTU */}
+                            <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-600 mb-3">Info UTU</h3>
+                                <div className="space-y-2">
+                                    <textarea
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200"
+                                        placeholder="Autoridades"
+                                        value={utuInfo.authorities}
+                                        onChange={(e) => setUtuInfo({ ...utuInfo, authorities: e.target.value })}
+                                    />
+                                    <textarea
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200"
+                                        placeholder="Horarios de atención"
+                                        value={utuInfo.attentionHours}
+                                        onChange={(e) => setUtuInfo({ ...utuInfo, attentionHours: e.target.value })}
+                                    />
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    {/* Overlay para oscurecer el fondo cuando el panel está abierto */}
+                    {isAddingPanelOpen ? (
+                        <div
+                            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
+                            onClick={() => setIsAddingPanel(false)}
+                        ></div>
+                    ) : null}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
